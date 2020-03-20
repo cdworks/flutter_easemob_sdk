@@ -285,14 +285,14 @@ class EMChatManager {
   }
 
   /// 获取所有会话
-  Future<Map<String, EMConversation>> getAllConversations() async {
+  Future<List<EMConversation>> getAllConversations() async {
     Map<String, dynamic> result = await _emChatManagerChannel
         .invokeMethod(EMSDKMethod.getAllConversations);
     if (result['success']) {
-      var data = HashMap<String, EMConversation>();
+      List<EMConversation> data = List();
       var conversations = result['conversations'] as List<dynamic>;
       for (var conversation in conversations) {
-        data[conversation['id']] = EMConversation.from(conversation);
+        data.add(EMConversation.from(conversation));
       }
       return data;
     } else {
