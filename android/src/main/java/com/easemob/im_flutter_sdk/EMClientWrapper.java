@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.function.Consumer;
 
+import android.app.Activity;
 import android.content.Context;
 
 import io.flutter.plugin.common.MethodCall;
@@ -16,6 +17,7 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import com.hyphenate.EMCallBack;
 import com.hyphenate.EMConnectionListener;
 import com.hyphenate.EMMultiDeviceListener;
+import com.hyphenate.chat.EMChatManager;
 import com.hyphenate.chat.EMClient;
 import com.hyphenate.chat.EMOptions;
 import com.hyphenate.chat.EMDeviceInfo;
@@ -23,7 +25,6 @@ import com.hyphenate.exceptions.HyphenateException;
 import com.hyphenate.push.EMPushHelper;
 import com.hyphenate.push.EMPushType;
 import com.hyphenate.util.EMLog;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -32,13 +33,15 @@ import org.json.JSONObject;
 @SuppressWarnings("unchecked")
 public class EMClientWrapper implements MethodCallHandler, EMWrapper{
 
-    EMClientWrapper(Context context, MethodChannel channel) {
+    EMClientWrapper(Context context,Activity activity,  MethodChannel channel) {
         this.context = context;
         this.channel = channel;
+        this.activity = activity;
     }
 
     private Context context;
     private MethodChannel channel;
+    private Activity activity;
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
@@ -137,9 +140,21 @@ public class EMClientWrapper implements MethodCallHandler, EMWrapper{
                     String password = argMap.getString("password");
                     try {
                         EMClient.getInstance().createAccount(userName, password);
-                        onSuccess(result);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onSuccess(result);
+                            }
+                        });
+
                     } catch (HyphenateException e) {
-                        onError(result, e);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onError(result, e);
+                            }
+                        });
+
                     }
                 }catch (JSONException e){
                     EMLog.e("JSONException", e.getMessage());
@@ -217,7 +232,13 @@ public class EMClientWrapper implements MethodCallHandler, EMWrapper{
                     Map<String, Object> data = new HashMap<String, Object>();
                     data.put("success", Boolean.TRUE);
                     data.put("status", new Boolean(status));
-                    result.success(data);
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            result.success(data);
+                        }
+                    });
+
                 }catch (JSONException e){
                     EMLog.e("JSONException", e.getMessage());
                 }
@@ -258,9 +279,20 @@ public class EMClientWrapper implements MethodCallHandler, EMWrapper{
                         Map<String, Object> data = new HashMap<String, Object>();
                         data.put("success", Boolean.TRUE);
                         data.put("devices", devicesMap);
-                        result.success(data);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                result.success(data);
+                            }
+                        });
                     }catch(HyphenateException e) {
-                        onError(result, e);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onError(result, e);
+                            }
+                        });
+
                     }
                 }catch (JSONException e){
                     EMLog.e("JSONException", e.getMessage());
@@ -280,9 +312,21 @@ public class EMClientWrapper implements MethodCallHandler, EMWrapper{
                     String resource = argMap.getString("resource");
                     try{
                         EMClient.getInstance().kickDevice(userName, password, resource);
-                        onSuccess(result);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onSuccess(result);
+                            }
+                        });
+
                     }catch (HyphenateException e) {
-                        onError(result,e);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onError(result,e);
+                            }
+                        });
+
                     }
                 }catch (JSONException e){
                     EMLog.e("JSONException", e.getMessage());
@@ -301,9 +345,20 @@ public class EMClientWrapper implements MethodCallHandler, EMWrapper{
                     String password = argMap.getString("password");
                     try{
                         EMClient.getInstance().kickAllDevices(userName, password);
-                        onSuccess(result);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onSuccess(result);
+                            }
+                        });
                     }catch (HyphenateException e) {
-                        onError(result,e);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onError(result,e);
+                            }
+                        });
+
                     }
                 }catch (JSONException e){
                     EMLog.e("JSONException", e.getMessage());

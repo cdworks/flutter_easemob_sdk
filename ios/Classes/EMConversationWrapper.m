@@ -97,6 +97,9 @@
     [self getConversationWithParam:param
                         completion:^(EMConversation *conversation) {
         [conversation markAllMessagesAsRead:nil];
+        [self wrapperCallBack:result
+           error:nil
+        userInfo:@{@"conversationId":param[@"id"]}];
     }];
 }
 
@@ -108,9 +111,10 @@
                          completion:^(EMConversation *conversation) {
         NSString *startMsgId = param[@"startMsgId"];
         int pageSize = [param[@"pageSize"] intValue];
+        EMMessageSearchDirection direction = (EMMessageSearchDirection)[param[@"direction"] intValue];
         [conversation loadMessagesStartFromId:startMsgId
                                         count:pageSize
-                              searchDirection:EMMessageSearchDirectionUp
+                              searchDirection:direction
                                    completion:^(NSArray *aMessages, EMError *aError)
         {
             [weakSelf wrapperCallBack:result
@@ -200,6 +204,9 @@
     {
         NSString *msgId = param[@"messageId"];
         [conversation markMessageAsReadWithId:msgId error:nil];
+        [self wrapperCallBack:result
+           error:nil
+        userInfo:@{@"msgId":msgId}];
     }];
 }
 
@@ -211,6 +218,9 @@
     {
         NSString *msgId = param[@"messageId"];
         [conversation deleteMessageWithId:msgId error:nil];
+        [self wrapperCallBack:result
+           error:nil
+        userInfo:@{@"msgId":msgId}];
     }];
 }
 
@@ -249,7 +259,15 @@
 - (void)clearAllMessages:(NSDictionary *)param
                   result:(FlutterResult)result
 {
-    
+    [self getConversationWithParam:param
+                        completion:^(EMConversation *conversation)
+    {
+        [conversation markAllMessagesAsRead:nil];
+        [conversation deleteAllMessages:nil];
+        [self wrapperCallBack:result
+           error:nil
+        userInfo:@{@"id":conversation.conversationId}];
+    }];
 }
 
 - (void)insertMessage:(NSDictionary *)param
@@ -259,8 +277,12 @@
                         completion:^(EMConversation *conversation)
     {
         NSDictionary *msgDict = param[@"msg"];
-        [conversation insertMessage:[EMHelper dictionaryToMessage:msgDict]
+        EMMessage* message = [EMHelper dictionaryToMessage:msgDict];
+        [conversation insertMessage:message
                               error:nil];
+        [self wrapperCallBack:result
+           error:nil
+        userInfo:@{@"msgId":message.messageId}];
     }];
 }
 
@@ -271,8 +293,12 @@
                         completion:^(EMConversation *conversation)
     {
         NSDictionary *msgDict = param[@"msg"];
-        [conversation appendMessage:[EMHelper dictionaryToMessage:msgDict]
+        EMMessage* message = [EMHelper dictionaryToMessage:msgDict];
+        [conversation appendMessage:message
                               error:nil];
+        [self wrapperCallBack:result
+           error:nil
+        userInfo:@{@"msgId":message.messageId}];
     }];
 }
 

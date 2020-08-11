@@ -4,10 +4,12 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.ThumbnailUtils;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompatSideChannelService;
 import com.hyphenate.chat.*;
 import com.hyphenate.chat.EMConversation.EMConversationType;
@@ -18,16 +20,19 @@ import com.hyphenate.push.EMPushConfig;
 import com.hyphenate.util.EMLog;
 import com.hyphenate.util.PathUtil;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @SuppressWarnings("unchecked")
 class EMHelper {
@@ -39,7 +44,6 @@ class EMHelper {
         EMMessage message = null;
         try {
             EMLog.d("convertDataMapToMessage", args.toString());
-
             int data_type = Integer.parseInt(args.getString("type"));
             int data_chatType = Integer.parseInt(args.getString("chatType"));
             emChatType = EMMessage.ChatType.Chat;
@@ -123,6 +127,13 @@ class EMHelper {
                     File file = new File(fileUrl);
                     if (file.exists()){
                         EMNormalFileMessageBody fileMessageBody = new EMNormalFileMessageBody(file);
+                        if(data_body.has("displayName"))
+                        {
+                            String displayName = data_body.getString("displayName");
+                            if(displayName.length() > 0) {
+                                fileMessageBody.setFileName(displayName);
+                            }
+                        }
                         message.addBody(fileMessageBody);
 
                     }
@@ -131,6 +142,7 @@ class EMHelper {
                     break;
                 case 6:
                     message = EMMessage.createSendMessage(Type.CMD);
+
                     String action = data_body.getString("action");
                     EMCmdMessageBody cmdMessageBody = new EMCmdMessageBody(action);
                     message.addBody(cmdMessageBody);
@@ -152,11 +164,11 @@ class EMHelper {
         try {
             if (null != args.getJSONObject("attributes")){
                 JSONObject data = args.getJSONObject("attributes");
-                Iterator iterator = data.keys();
+                Iterator<String> iterator = data.keys();
+
                 while (iterator.hasNext()){
-                    String key = data.keys().next();
+                    String key = iterator.next();
                     message.setAttribute(key,data.getString(key));
-                    iterator.next();
                 }
             }
         } catch (JSONException e) {
@@ -197,14 +209,105 @@ class EMHelper {
         return "";
     }
 
+//    /**
+//     * 将JSONArray 对象解析并包装成 List
+//     * @param jsonArray
+//     * @return
+//     */
+//
+//    static List convertJSONArrayToList(JSONArray jsonArray)
+//    {
+//        List list = new ArrayList();
+//
+//        for (int i = 0;i<jsonArray.length();i++) {
+//            try {
+//                Object value = jsonArray.get(i);
+//                if(value instanceof JSONArray)
+//                {
+//                    list.add(convertJSONArrayToList((JSONArray) value));
+//                }
+//                else if(value instanceof  JSONObject)
+//                {
+//                    list.add(convertJSONObjectToMap((JSONObject) value));
+//                }
+//                else
+//                {
+//                    list.add(value);
+//                }
+//            } catch (JSONException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//
+//        return list;
+//    }
+//
+//    /**
+//     * 将JSONObject 对象解析并包装成 Map
+//     * @param jsonObject
+//     * @return
+//     */
+//
+//    static Map<String, Object> convertJSONObjectToMap(JSONObject jsonObject)
+//    {
+//        Map<String, Object> map = new HashMap<>();
+//        for (Iterator<String> it = jsonObject.keys(); it.hasNext(); ) {
+//            String key = it.next();
+//            try {
+//                Object value = jsonObject.get(key);
+//                if(value instanceof JSONObject)
+//                {
+//                    map.put(key,convertJSONObjectToMap((JSONObject) value));
+//                }
+//                else if(value instanceof JSONArray)
+//                {
+//                    map.put(key,convertJSONArrayToList((JSONArray) value));
+//                }
+//                else
+//                {
+//                    map.put(key,value);
+//                }
+//            } catch (JSONException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//
+//        return map;
+//    }
+
     /**
      * 将EMMessage 对象解析并包装成 Map
      * @param message
      * @return
      */
     static Map<String, Object> convertEMMessageToStringMap(EMMessage message) {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         if (null != message.ext()){
+//            Map<String, Object> megExt = new HashMap<>();
+//            for (Map.Entry<String, Object> entry : message.ext().entrySet()) {
+//                String key = entry.getKey();
+//                String value = (String) entry.getValue();
+//                if (value.startsWith("[") && value.endsWith("]")) {
+//                    try {
+//                        JSONArray obj = new JSONArray(value);
+//                        List objValue = convertJSONArrayToList(obj);
+//                        megExt.put(key,objValue);
+//                    }
+//                    catch (JSONException e) {
+//                        megExt.put(key,value);
+//                    }
+//                } else if (value.startsWith("{") && value.endsWith("}")) {
+//                    try {
+//                        JSONObject obj = new JSONObject(value);
+//                        Map objValue = convertJSONObjectToMap(obj);
+//                        megExt.put(key,objValue);
+//                    } catch (JSONException e) {
+//                        megExt.put(key,value);
+//                    }
+//                } else {
+//                    megExt.put(key,value);
+//                }
+//            }
             result.put("attributes", message.ext());
         }else{
             ///扩展不能为空 设置一个默认值
@@ -381,6 +484,7 @@ class EMHelper {
         result.put("id", conversation.conversationId());
         result.put("type", convertEMConversationTypeToInt(conversation.getType()));
         result.put("ext", conversation.getExtField());
+        result.put("unreadMessagesCount", conversation.getUnreadMsgCount());
         return result;
     }
 
@@ -389,6 +493,7 @@ class EMHelper {
      * @param emChatRoom
      * @return
      */
+    @RequiresApi(api = Build.VERSION_CODES.N)
     static Map<String, Object> convertEMChatRoomToStringMap(EMChatRoom emChatRoom) {
         Map<String, Object> chatRoomMap = new HashMap<String, Object>();
         chatRoomMap.put("roomId",emChatRoom.getId());
@@ -430,6 +535,7 @@ class EMHelper {
      * @param result
      * @return
      */
+    @RequiresApi(api = Build.VERSION_CODES.N)
     static Map<String, Object> convertEMPageResultToStringMap(EMPageResult result) {
         List list = (List)result.getData();
         String className = list.get(0).getClass().getSimpleName();
@@ -607,10 +713,10 @@ class EMHelper {
         result.put("permissionType", permissionType);
 
         List noPushGroups = EMClient.getInstance().pushManager().getNoPushGroups();
-        boolean isPushNotificationEnabled = false;
+        boolean isPushNotificationEnabled = true;
         if (noPushGroups != null) {
             if(noPushGroups.contains(group.getGroupId())){
-                isPushNotificationEnabled = true;
+                isPushNotificationEnabled = false;
             }
         }
         result.put("isPushNotificationEnabled", isPushNotificationEnabled);

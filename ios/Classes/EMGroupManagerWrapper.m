@@ -21,6 +21,7 @@
     if(self = [super initWithChannelName:aChannelName
                                registrar:registrar]) {
         [EMClient.sharedClient.groupManager addDelegate:self delegateQueue:nil];
+    
     }
     return self;
 }
@@ -31,8 +32,6 @@
                   result:(FlutterResult)result {
     if ([EMMethodKeyGetJoinedGroups isEqualToString:call.method]) {
         [self getJoinedGroups:call.arguments result:result];
-    } else if ([EMMethodKeyGetGroupsWithoutPushNotification isEqualToString:call.method]) {
-        [self getGroupsWithoutPushNotification:call.arguments result:result];
     } else if ([EMMethodKeyGetGroup isEqualToString:call.method]) {
         [self getGroup:call.arguments result:result];
     } else if ([EMMethodKeyGetJoinedGroupsFromServer isEqualToString:call.method]) {
@@ -109,10 +108,6 @@
         [self acceptInvitationFromGroup:call.arguments result:result];
     } else if ([EMMethodKeyDeclineGroupInvitation isEqualToString:call.method]) {
         [self declineGroupInvitation:call.arguments result:result];
-    } else if ([EMMethodKeyUpdatePushServiceForGroup isEqualToString:call.method]) {
-        [self updatePushServiceForGroup:call.arguments result:result];
-    } else if ([EMMethodKeyUpdatePushServiceForGroups isEqualToString:call.method]) {
-        [self updatePushServiceForGroups:call.arguments result:result];
     } else {
         [super handleMethodCall:call result:result];
     }
@@ -121,19 +116,38 @@
 #pragma mark - Actions
 
 - (void)getJoinedGroups:(NSDictionary *)param result:(FlutterResult)result {
-    NSArray *joinedGroups = [EMClient.sharedClient.groupManager getJoinedGroups];
+//    NSArray *joinedGroups = [EMClient.sharedClient.groupManager getJoinedGroups];
+    
+//    if(!joinedGroups.count)
+//    {
+        NSString* currentUserId = [[EMClient sharedClient] currentUsername];
+        if(currentUserId.length)
+        {
+            NSUserDefaults* standardUserDefaults = [NSUserDefaults standardUserDefaults];
+                    NSDictionary* allJoinGroups = [standardUserDefaults objectForKey:@"easesdk_join_groups"];
+                    if(allJoinGroups)
+                    {
+                        NSArray* joinGroups = [allJoinGroups valueForKeyPath:currentUserId];
+                        if(joinGroups.count)
+                        {
+                            [self wrapperCallBack:result
+                               error:nil
+                            userInfo:@{@"value":joinGroups}];
+                            return;
+                        }
+                    }
+        }
+        
+        
+//    }
+    
     [self wrapperCallBack:result
-                    error:nil
-                 userInfo:@{@"value":[EMHelper groupsToDictionaries:joinedGroups]}];
+       error:nil
+    userInfo:@{@"value":@[]}];
+    
+    
 }
-// 有疑议
-- (void)getGroupsWithoutPushNotification:(NSDictionary *)param result:(FlutterResult)result {
-    EMError *aError;
-    NSArray *pushGroups = [EMClient.sharedClient.groupManager getGroupsWithoutPushNotification:&aError];
-    [self wrapperCallBack:result
-                    error:nil
-                 userInfo:@{@"value":[EMHelper groupsToDictionaries:pushGroups]}];
-}
+
 
 - (void)getGroup:(NSDictionary *)param result:(FlutterResult)result {
     NSString *groupId = param[@"groupId"];
@@ -149,6 +163,47 @@
                                                                  pageSize:-1
                                                                completion:^(NSArray *aList, EMError *aError)
      {
+        //本地缓存
+        if(!aError)
+        {
+            
+            NSString* currentUserId = [[EMClient sharedClient] currentUsername];
+            if(currentUserId.length)
+            {
+                NSUserDefaults* standardUserDefaults = [NSUserDefaults standardUserDefaults];
+                NSDictionary* allJoinGroups = [standardUserDefaults objectForKey:@"easesdk_join_groups"];
+                
+                NSMutableDictionary* mutableAllJoinGroups = allJoinGroups ? [NSMutableDictionary dictionaryWithDictionary:allJoinGroups] : [NSMutableDictionary dictionaryWithCapacity:1];
+                
+                
+                
+                
+                
+                if(aList.count)
+                {
+                    NSMutableArray* usersGroups = [NSMutableArray arrayWithCapacity:aList.count];
+                    for (EMGroup *group in aList) {
+                        [usersGroups addObject:@{@"groupId":group.groupId,@"groupName":group.subject,@"permissionType":@(-1),@"sharedFileList":@[]}];
+                    }
+                    [mutableAllJoinGroups setValue:usersGroups forKey:currentUserId];
+                }
+                else
+                {
+                    [mutableAllJoinGroups removeObjectForKey:currentUserId];
+                }
+                
+                if(mutableAllJoinGroups.count)
+                {
+                    [standardUserDefaults setObject:mutableAllJoinGroups forKey:@"easesdk_join_groups"];
+                }
+                else
+                {
+                    [standardUserDefaults removeObjectForKey:@"easesdk_join_groups"];
+                }
+            }
+            
+        }
+        
         [self wrapperCallBack:result
                         error:aError
                      userInfo:@{@"value":[EMHelper groupsToDictionaries:aList]}];
@@ -631,32 +686,7 @@
                      userInfo:nil];
     }];
 }
-// 有疑议
-- (void)updatePushServiceForGroup:(NSDictionary *)param result:(FlutterResult)result {
-    NSString *groupId = param[@"groupId"];
-    BOOL isEnable = param[@"isEnable"];
-    [EMClient.sharedClient.groupManager updatePushServiceForGroup:groupId
-                                                    isPushEnabled:isEnable
-                                                       completion:^(EMGroup *aGroup, EMError *aError)
-     {
-        [self wrapperCallBack:result
-                        error:aError
-                     userInfo:@{@"value":[EMHelper groupToDictionary:aGroup]}];
-    }];
-}
-// 有疑议
-- (void)updatePushServiceForGroups:(NSDictionary *)param result:(FlutterResult)result {
-    NSArray *groupIDs = param[@"groupIDs"];
-    BOOL isEnable = [param[@"isEnable"] boolValue];
-    [EMClient.sharedClient.groupManager updatePushServiceForGroups:groupIDs
-                                                     isPushEnabled:isEnable
-                                                        completion:^(NSArray *groups, EMError *aError)
-     {
-        [self wrapperCallBack:result
-                        error:aError
-                     userInfo:@{@"value":[EMHelper groupsToDictionaries:groups]}];
-    }];
-}
+
 
 #pragma mark - EMGroupManagerDelegate
 

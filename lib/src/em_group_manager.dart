@@ -57,6 +57,27 @@ class EMGroupManager {
     }
   }
 
+//  ///从内存中获取屏蔽了推送的群组ID列表
+//
+//  Future<List<EMGroup>> getGroupsWithoutPushNotification() async {
+//    Map<String, dynamic> result =
+//    await _emGroupManagerChannel.invokeMethod(EMSDKMethod.getGroupsWithoutPushNotification);
+//    if (result['success']) {
+//      var data = List<EMGroup>();
+//      if (result['value'] != null) {
+//        var groups = result['value'] as List<dynamic>;
+//        for (var group in groups) {
+//          data.add(EMGroup.from(group));
+//        }
+//        return data;
+//      } else {
+//        return data;
+//      }
+//    } else {
+//      return null;
+//    }
+//  }
+
   /// 根据群组ID，获得群组对象
   Future<EMGroup> getGroup(String groupId) async {
     Map<String, dynamic> result = await _emGroupManagerChannel
@@ -176,24 +197,19 @@ class EMGroupManager {
   }
 
   /// 从服务器获取群组的详细信息
-  void getGroupFromServer(String groupId,
-      {onSuccess(EMGroup group), onError(int errorCode, String desc)}) {
-    Future<Map<String, dynamic>> result = _emGroupManagerChannel
+  Future<EMGroup> getGroupFromServer(String groupId) async{
+    Map<String, dynamic> result = await _emGroupManagerChannel
         .invokeMethod(EMSDKMethod.getGroupFromServer, {"groupId": groupId});
-    result.then((response) {
-      if (response['success']) {
-        if (onSuccess != null) {
-          if (response['value'] != null) {
-            print(response['value']);
-            onSuccess(EMGroup.from(response['value']));
-          } else {
-            onSuccess(null);
-          }
-        }
+
+    if (result['success']) {
+      if (result['value'] != null) {
+        return EMGroup.from(result['value']);
       } else {
-        if (onError != null) onError(response['code'], response['desc']);
+        return null;
       }
-    });
+    } else {
+      return null;
+    }
   }
 
   /// 从服务器端获取当前用户的所有群组此操作只返回群组列表，并不获取群组的所有成员信息

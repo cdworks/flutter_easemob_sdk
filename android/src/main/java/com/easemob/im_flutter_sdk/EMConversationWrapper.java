@@ -1,6 +1,13 @@
 package com.easemob.im_flutter_sdk;
 
+import android.os.Build;
+import android.util.Log;
+
+import androidx.annotation.RequiresApi;
+
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -10,10 +17,13 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 
+import com.hyphenate.chat.EMBase;
 import com.hyphenate.chat.EMChatManager;
 import com.hyphenate.chat.EMClient;
 import com.hyphenate.chat.EMConversation;
 import com.hyphenate.chat.EMMessage;
+import com.hyphenate.chat.adapter.EMAConversation;
+import com.hyphenate.chat.adapter.message.EMAMessage;
 import com.hyphenate.util.EMLog;
 
 import org.json.JSONArray;
@@ -98,13 +108,49 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
         }
     }
 
+    private List<EMMessage>  loadMoreMsgFromDBWithSearchDirection(String conversationId, String startMsgId,
+                                                                      int pageSize,
+                                                                      EMAConversation.EMASearchDirection direction)
+    {
+        List<EMMessage> list = new ArrayList<EMMessage>();
+        EMConversation conversation = getConversation(conversationId);
+        try {
+
+            Field emaObjectField = EMBase.class.getDeclaredField("emaObject");
+            emaObjectField.setAccessible(true);
+            EMAConversation emaConversation = (EMAConversation) emaObjectField.get(conversation);
+            emaObjectField.setAccessible(false);
+
+            List<EMAMessage> msgs = emaConversation.loadMoreMessages(startMsgId, pageSize, direction);
+            for (EMAMessage msg : msgs) {
+                if (msg != null) {
+                    list.add(new EMMessage(msg));
+                }
+            }
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+
     private void loadMoreMsgFromDB(Object args, Result result) {
         try {
             JSONObject argMap = (JSONObject) args;
             String id = argMap.getString("id");
             String startMsgId = argMap.getString("startMsgId");
             int pageSize = argMap.getInt("pageSize");
-            List<EMMessage> list = getConversation(id).loadMoreMsgFromDB(startMsgId, pageSize);
+
+            int direction = 0;
+            if(argMap.has("direction")) {
+                direction = argMap.getInt("direction");
+            }
+
+            EMAConversation.EMASearchDirection searchDirection = direction == 0 ? EMAConversation.EMASearchDirection.UP : EMAConversation.EMASearchDirection.DOWN;
+
+
+            List<EMMessage> list = loadMoreMsgFromDBWithSearchDirection(id,startMsgId,pageSize,searchDirection);
             List<Map<String, Object>> messages = new LinkedList<Map<String, Object>>();
             list.forEach(message->{
                 messages.add(EMHelper.convertEMMessageToStringMap(message));
@@ -118,12 +164,16 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void searchMsgFromDB(Object args, Result result) {
         try {
             JSONObject argMap = (JSONObject) args;
             String id = argMap.getString("id");
             String keywords = argMap.getString("keywords");
-            String from = argMap.getString("from");
+            String from = null;
+            if(argMap.has("from")) {
+                from = argMap.getString("from");
+            }
             Integer timeStamp = argMap.getInt("timeStamp");
             Integer maxCount = (Integer)argMap.get("maxCount");
             int direction = argMap.getInt("direction");
@@ -146,15 +196,19 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
             JSONObject argMap = (JSONObject) args;
             String id = argMap.getString("id");
             int type = argMap.getInt("type");
-            String from = argMap.getString("from");
+            String from = null;
+            if(argMap.has("from")) {
+                from = argMap.getString("from");
+            }
+
             String timeStamp = argMap.getString("timeStamp");
             int maxCount = argMap.getInt("maxCount");
             int direction = argMap.getInt("direction");
             List<EMMessage> list = getConversation(id).searchMsgFromDB(convertIntToEMMessageType(type), Long.parseLong(timeStamp), maxCount, from, convertIntToEMSearchDirection(direction));
             List<Map<String, Object>> messages = new LinkedList<Map<String, Object>>();
-            list.forEach(message->{
-                messages.add(EMHelper.convertEMMessageToStringMap(message));
-            });
+//            list.forEach(message->{
+//                messages.add(EMHelper.convertEMMessageToStringMap(message));
+//            });
             Map<String, Object> data = new HashMap<String, Object>();
             data.put("success", Boolean.TRUE);
             data.put("messages", messages);
@@ -180,6 +234,7 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void loadMessages(Object args, Result result) {
         try {
             JSONObject argMap = (JSONObject) args;
@@ -209,6 +264,12 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
             String id = argMap.getString("id");
             String messageId = argMap.getString("messageId");
             getConversation(id).markMessageAsRead(messageId);
+            result.success(new HashMap() {
+                {
+                    put("id", id);
+                    put("msgId",messageId);
+                }
+            });
         }catch (JSONException e){
             EMLog.e("JSONException", e.getMessage());
         }
@@ -220,6 +281,12 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
             String id = argMap.getString("id");
             String messageId = argMap.getString("messageId");
             getConversation(id).removeMessage(messageId);
+            result.success(new HashMap() {
+                {
+                    put("id", id);
+                    put("msgId",messageId);
+                }
+            });
         }catch (JSONException e){
             EMLog.e("JSONException", e.getMessage());
         }
@@ -258,6 +325,11 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
             JSONObject argMap = (JSONObject) args;
             String id = argMap.getString("id");
             getConversation(id).clear();
+            result.success(new HashMap() {
+                {
+                    put("id", id);
+                }
+            });
         }catch (JSONException e){
             EMLog.e("JSONException", e.getMessage());
         }
@@ -268,6 +340,12 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
             JSONObject argMap = (JSONObject) args;
             String id = argMap.getString("id");
             getConversation(id).clearAllMessages();
+
+            result.success(new HashMap() {
+                {
+                    put("id", id);
+                }
+            });
         }catch (JSONException e){
             EMLog.e("JSONException", e.getMessage());
         }
@@ -279,6 +357,11 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
             String id = argMap.getString("id");
             EMMessage message = EMHelper.convertDataMapToMessage((JSONObject) argMap.get("msg"));
             getConversation(id).insertMessage(message);
+            result.success(new HashMap() {
+                {
+                    put("id", id);
+                }
+            });
         }catch (JSONException e){
             EMLog.e("JSONException", e.getMessage());
         }
@@ -290,6 +373,12 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
             String id = argMap.getString("id");
             EMMessage message = EMHelper.convertDataMapToMessage((JSONObject)argMap.get("msg"));
             getConversation(id).appendMessage(message);
+            result.success(new HashMap() {
+                {
+                    put("id", id);
+                    put("msgId", message.getMsgId());
+                }
+            });
         }catch (JSONException e){
             EMLog.e("JSONException", e.getMessage());
         }
@@ -301,6 +390,12 @@ public class EMConversationWrapper implements MethodCallHandler, EMWrapper{
             String id = argMap.getString("id");
             EMMessage message = EMHelper.convertDataMapToMessage((JSONObject)argMap.get("msg"));
             getConversation(id).updateMessage(message);
+            result.success(new HashMap() {
+                {
+                    put("id", id);
+                    put("msgId", message.getMsgId());
+                }
+            });
         }catch (JSONException e){
             EMLog.e("JSONException", e.getMessage());
         }

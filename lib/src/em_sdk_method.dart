@@ -33,6 +33,7 @@ class EMSDKMethod {
   static const String onContactChanged = 'onContactChanged';
 
   /// EMChatManager methods
+  static const String initManager = "initManager";
   static const String sendMessage = 'sendMessage';
   static const String resendMessage = 'resendMessage';
   static const String ackMessageRead = 'ackMessageRead';
@@ -51,6 +52,8 @@ class EMSDKMethod {
   static const String getAllConversations = "getAllConversations";
   static const String loadAllConversations = "loadAllConversations";
   static const String deleteConversation = "deleteConversation";
+  static const String deleteConversationIfEmpty = "deleteConversationIfEmpty";
+
   static const String setVoiceMessageListened = "setVoiceMessageListened";
   static const String updateParticipant = "updateParticipant";
   static const String fetchHistoryMessages = "fetchHistoryMessages";
@@ -117,6 +120,7 @@ class EMSDKMethod {
 
   /// EMGroupManager
   static const String getAllGroups = "getAllGroups";
+  static const String getGroupsWithoutPushNotification = "getGroupsWithoutPushNotification";
   static const String getGroup = "getGroup";
   static const String createGroup = "createGroup";
   static const String loadAllGroups = "loadAllGroups";
@@ -168,5 +172,6 @@ class EMSDKMethod {
   static const String updatePushServiceForGroup = "updatePushServiceForGroup";
   static const String getNoPushGroups = "getNoPushGroups";
   static const String updatePushNickname = "updatePushNickname";
+  static const String updatePushDisplayStyle = "updatePushDisplayStyle";
 
 }

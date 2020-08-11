@@ -10,6 +10,7 @@ class EMConversation {
   static const MethodChannel _emConversationChannel =
       const MethodChannel('$_channelPrefix/em_conversation', JSONMethodCodec());
   final String _conversationId;
+   int unreadMessagesCount;
 
   /// 会话id
   String get conversationId => _conversationId;
@@ -19,7 +20,7 @@ class EMConversation {
   EMConversationType get type => _type;
 
   /// 会话扩展
-  String extField;
+  dynamic extField;
 
   /// @nodoc
   EMConversation(String conversationId) : _conversationId = conversationId;
@@ -28,17 +29,18 @@ class EMConversation {
   EMConversation.from(Map data)
       : _conversationId = data['id'],
         _type = fromEMConversationType(data['type']),
+        unreadMessagesCount = (data['unreadMessagesCount'] as num).toInt(),
         extField = data['ext'];
 
-  /// 获取此对话中未读取的消息数量.
-  Future<int> getUnreadMsgCount() async {
-    Map<String, dynamic> result = await _emConversationChannel
-        .invokeMethod(EMSDKMethod.getUnreadMsgCount, {"id": _conversationId});
-    if (result['success']) {
-      return result['count'];
-    }
-    return -1; //-1 means error/unknown
-  }
+//  /// 获取此对话中未读取的消息数量.
+//  Future<int> getUnreadMsgCount() async {
+//    Map<String, dynamic> result = await _emConversationChannel
+//        .invokeMethod(EMSDKMethod.getUnreadMsgCount, {"id": _conversationId});
+//    if (result['success']) {
+//      return result['count'];
+//    }
+//    return -1; //-1 means error/unknown
+//  }
 
   /// 将所有未读消息设置为已读.
   void markAllMessagesAsRead() {
@@ -48,12 +50,13 @@ class EMConversation {
 
   /// 根据传入的参数从db加载startMsgId之前(存储顺序)指定数量的message[startMsgId], [pageSize]
   Future<List<EMMessage>> loadMoreMsgFromDB(
-      String startMsgId, int pageSize) async {
+      String startMsgId, int pageSize,{EMSearchDirection direction = EMSearchDirection.Up}) async {
     Map<String, dynamic> result = await _emConversationChannel.invokeMethod(
         EMSDKMethod.loadMoreMsgFromDB, {
       "id": _conversationId,
       "startMsgId": startMsgId,
-      "pageSize": pageSize
+      "pageSize": pageSize,
+      "direction": toEMSearchDirection(direction)
     });
     if (result['success']) {
       var messages = List<EMMessage>();
@@ -72,16 +75,23 @@ class EMConversation {
   /// [timeStamp],搜索消息的时间点
   /// [maxCount] 搜索结果的最大条数
   /// [direction]. 方向
-  Future<List<EMMessage>> searchMsgFromDB(EMMessageType type, String keywords,
-      int timeStamp, int maxCount, EMSearchDirection direction) async {
-    Map<String, dynamic> result = await _emConversationChannel
+  Future<List<EMMessage>> searchMsgFromDB(String keywords,
+      int timeStamp, int maxCount, EMSearchDirection direction,{String from}) async {
+    Map<String, dynamic> result = from == null ?  await _emConversationChannel
         .invokeMethod(EMSDKMethod.searchConversationMsgFromDB, {
       "id": _conversationId,
-      "type": type,
       "keywords": keywords,
       "timeStamp": timeStamp,
       "maxCount": maxCount,
-      "direction": direction
+      "direction": toEMSearchDirection(direction)
+    }) : await _emConversationChannel
+        .invokeMethod(EMSDKMethod.searchConversationMsgFromDB, {
+      "id": _conversationId,
+      "keywords": keywords,
+      "timeStamp": timeStamp,
+      "maxCount": maxCount,
+      "from":from,
+      "direction": toEMSearchDirection(direction)
     });
     if (result['success']) {
       var messages = List<EMMessage>();
@@ -157,8 +167,8 @@ class EMConversation {
   }
 
   /// 从对话中删除id是[messageId]的消息。
-  void removeMessage(String messageId) {
-    _emConversationChannel.invokeMethod(EMSDKMethod.removeMessage,
+  Future removeMessage(String messageId) async{
+    await _emConversationChannel.invokeMethod(EMSDKMethod.removeMessage,
         {"id": _conversationId, "messageId": messageId});
   }
 
@@ -189,8 +199,8 @@ class EMConversation {
   }
 
   /// 删除该会话所有消息，同时清除内存和数据库中的消息
-  void clearAllMessages() {
-    _emConversationChannel
+  Future<Map> clearAllMessages() async{
+    await _emConversationChannel
         .invokeMethod(EMSDKMethod.clearAllMessages, {"id": _conversationId});
   }
 
@@ -200,8 +210,8 @@ class EMConversation {
   }
 
   /// 插入一条消息[msg]
-  void insertMessage(EMMessage msg) {
-    _emConversationChannel.invokeMethod(EMSDKMethod.insertMessage,
+  Future insertMessage(EMMessage msg) async{
+    await _emConversationChannel.invokeMethod(EMSDKMethod.insertMessage,
         {"id": _conversationId, "msg": msg.toDataMap()});
   }
 

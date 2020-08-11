@@ -108,6 +108,11 @@ class EMGroup{
     return _groupName;
   }
 
+  String setGroupName(String name)
+  {
+    _groupName = name;
+  }
+
   /// 群描述
   String getDescription(){
     return _description;
@@ -202,5 +207,10 @@ class EMGroup{
   /// 是否免打扰
   bool isPushNotificationEnabled(){
     return _isPushNotificationEnabled;
+  }
+  
+  bool setPushNotificationEnable(bool isEnable)
+  {
+    _isPushNotificationEnabled = isEnable;
   }
 }

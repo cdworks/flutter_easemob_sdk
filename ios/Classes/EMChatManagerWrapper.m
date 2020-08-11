@@ -31,7 +31,10 @@
 
 - (void)handleMethodCall:(FlutterMethodCall*)call
                   result:(FlutterResult)result {
-    if ([EMMethodKeySendMessage isEqualToString:call.method]) {
+    if ([EMMethodKeyInitManager isEqualToString:call.method]) {
+        NSLog(@"only for Android,need't implement");
+    }
+    else if ([EMMethodKeySendMessage isEqualToString:call.method]) {
         [self sendMessage:call.arguments result:result];
     }else if ([EMMethodKeyResendMessage isEqualToString:call.method]) {
         [self resendMessage:call.arguments result:result];
@@ -68,7 +71,9 @@
         [self loadAllConversations:call.arguments result:result];
     } else if ([EMMethodKeyDeleteConversation isEqualToString:call.method]) {
         [self deleteConversation:call.arguments result:result];
-    } else if ([EMMethodKeySetVoiceMessageListened isEqualToString:call.method]) {
+    } else if ([EMMethodKeyDeleteConversationIfEmpty isEqualToString:call.method]) {
+        [self deleteConversationIfEmpty:call.arguments result:result];
+    }else if ([EMMethodKeySetVoiceMessageListened isEqualToString:call.method]) {
         [self setVoiceMessageListened:call.arguments result:result];
     } else if ([EMMethodKeyUpdateParticipant isEqualToString:call.method]) {
         [self updateParticipant:call.arguments result:result];
@@ -352,6 +357,112 @@
 
 // TODO: 目前这种方式实现后，消息id不一致，考虑如何处理。
 - (void)updateChatMessage:(NSDictionary *)param result:(FlutterResult)result {
+    NSString* msgId = param[@"msgId"];
+    
+    if(!msgId.length)
+    {
+        NSMutableDictionary *dic = [NSMutableDictionary dictionary];
+        dic[@"success"] = @NO;
+        dic[@"code"] = @(1);
+        dic[@"desc"] = @"msgId为空";
+        result(dic);
+        return;
+    }
+    EMMessage* reMsg = [[[EMClient sharedClient] chatManager] getMessageWithMessageId:msgId];
+    
+    if(reMsg == nil)
+    {
+        NSMutableDictionary *dic = [NSMutableDictionary dictionary];
+        dic[@"success"] = @NO;
+        dic[@"code"] = @(1);
+        dic[@"desc"] = @"remessage not exsit!";
+        result(dic);
+        return;
+    }
+    
+    NSDictionary *ext = param[@"attributes"];
+       int type = [param[@"type"] intValue];
+       NSDictionary *msgBodyDict = param[@"body"];
+    EMMessageBody *body = nil;
+       switch (type) {
+           case 0:
+           {
+               NSString *content = msgBodyDict[@"message"];
+               body = [[EMTextMessageBody alloc] initWithText:content];
+               
+           }
+               break;
+           
+           case 2:
+           {
+               NSString *localUrl = msgBodyDict[@"localUrl"];
+               int videoDuration = [msgBodyDict[@"videoDuration"] intValue];
+               long long fileLength = [msgBodyDict[@"fileLength"] longLongValue];
+               body = [[EMVideoMessageBody alloc] initWithLocalPath:localUrl
+                                                        displayName:@"video"];
+               ((EMVideoMessageBody *)body).fileLength = fileLength;
+               ((EMVideoMessageBody *)body).duration = videoDuration;
+           }
+               break;
+           case 3:
+           {
+               NSString *address = msgBodyDict[@"address"];
+               double latitude = [msgBodyDict[@"latitude"] doubleValue];
+               double longitude = [msgBodyDict[@"longitude"] doubleValue];
+               body = [[EMLocationMessageBody alloc] initWithLatitude:latitude
+                                                            longitude:longitude
+                                                              address:address];
+           }
+               break;
+           case 4:
+           {
+               NSString *localUrl = msgBodyDict[@"localUrl"];
+               int voiceDuration = [msgBodyDict[@"voiceDuration"] intValue];
+               long long fileLength = [msgBodyDict[@"fileLength"] longLongValue];
+               body = [[EMVoiceMessageBody alloc] initWithLocalPath:localUrl displayName:@"voice"];
+               ((EMVoiceMessageBody *)body).duration = voiceDuration;
+               ((EMVoiceMessageBody *)body).fileLength = fileLength;
+           }
+               break;
+           case 5:
+           {
+               NSString *localUrl = msgBodyDict[@"localUrl"];
+               long long fileLength = [msgBodyDict[@"fileLength"] longLongValue];
+               NSString* fileName = [msgBodyDict valueForKeyPath:@"displayName"];
+               if(!fileName.length)
+               {
+                   fileName =[localUrl pathComponents].lastObject;
+               }
+    
+               body = [[EMFileMessageBody alloc] initWithLocalPath:localUrl displayName:fileName];
+               ((EMFileMessageBody *)body).fileLength = fileLength;
+           }
+               break;
+           case 6:
+           {
+               NSString *action = msgBodyDict[@"action"];
+               body = [[EMCmdMessageBody alloc] initWithAction:action];
+           }
+               break;
+               
+           default:
+               break;
+       }
+    
+    reMsg.body = body;
+    reMsg.ext = ext;
+//    reMsg.st
+    [EMClient.sharedClient.chatManager updateMessage:reMsg completion:^(EMMessage *aMessage, EMError *aError) {
+        if(!aError)
+        {
+            [self wrapperCallBack:result error:nil userInfo:@{@"msgId" :reMsg.messageId}];
+        }
+        else
+        {
+            [self wrapperCallBack:result error:aError userInfo:nil];
+        }
+    }];
+    
     
 }
 
@@ -442,7 +553,43 @@
 
 
 - (void)getAllConversations:(NSDictionary *)param result:(FlutterResult)result {
-    NSArray *conversations = [EMClient.sharedClient.chatManager getAllConversations];
+    NSArray *dbConversations = [EMClient.sharedClient.chatManager getAllConversations];
+    
+    
+    
+    NSMutableArray* conversations = [NSMutableArray arrayWithCapacity:dbConversations.count];
+    
+    NSMutableArray *needRemoveConversations = [NSMutableArray arrayWithCapacity:dbConversations.count];
+    for (EMConversation* conversation in dbConversations) {
+        
+        if(conversation.latestMessage)
+        {
+            [conversations addObject:conversation];
+        }
+        else
+        {
+            [needRemoveConversations addObject:conversation];
+        }
+    }
+    
+    if(needRemoveConversations.count)
+    {
+         [[EMClient sharedClient].chatManager deleteConversations:needRemoveConversations isDeleteMessages:YES completion:nil];
+    }
+
+    if(conversations.count)
+    {
+        [conversations sortUsingComparator:^NSComparisonResult(EMConversation*  _Nonnull obj1, EMConversation*  _Nonnull obj2) {
+            EMMessage *message1 = [obj1 latestMessage];
+            EMMessage *message2 = [obj2 latestMessage];
+            if(message1.timestamp > message2.timestamp) {
+                return(NSComparisonResult)NSOrderedAscending;
+            }else {
+                return(NSComparisonResult)NSOrderedDescending;
+            }
+        }];
+    }
+    
     NSMutableArray *conversationDictList = [NSMutableArray array];
     for (EMConversation *conversation in conversations) {
         [conversationDictList addObject:[EMHelper conversationToDictionary:conversation]];
@@ -467,6 +614,49 @@
                             error:aError
                          userInfo:@{@"status" : [NSNumber numberWithBool:(aError == nil)]}];
     }];
+}
+
+- (void)deleteConversationIfEmpty:(NSDictionary *)param result:(FlutterResult)result {
+    __weak typeof(self)weakSelf = self;
+    NSString *conversationId = param[@"userName"];
+    BOOL deleteMessages = [param[@"deleteMessages"] boolValue];
+    
+    EMConversation* conversation = [EMClient.sharedClient.chatManager getConversation:conversationId type:EMConversationTypeChat createIfNotExist:NO];
+    if(!conversation)
+    {
+        conversation = [EMClient.sharedClient.chatManager getConversation:conversationId type:EMConversationTypeGroupChat createIfNotExist:NO];
+    }
+    if(!conversation)
+    {
+        conversation = [EMClient.sharedClient.chatManager getConversation:conversationId type:EMConversationTypeChatRoom createIfNotExist:NO];
+    }
+    if(conversation)
+    {
+        if(!conversation.latestMessage)
+        {
+            
+            [EMClient.sharedClient.chatManager deleteConversation:conversationId
+                                                 isDeleteMessages:deleteMessages
+                                                       completion:^(NSString *aConversationId, EMError *aError)
+             {
+                [weakSelf wrapperCallBack:result
+                                    error:aError
+                                 userInfo:@{@"status" : [NSNumber numberWithBool:(aError == nil)]}];
+            }];
+        }
+        else
+        {
+            [weakSelf wrapperCallBack:result
+               error:nil
+            userInfo:@{@"status" : [NSNumber numberWithBool:NO]}];
+        }
+    }
+    else
+    {
+        [weakSelf wrapperCallBack:result
+           error:nil
+        userInfo:@{@"status" : [NSNumber numberWithBool:NO]}];
+    }
 }
 
 // ??

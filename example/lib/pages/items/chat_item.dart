@@ -80,6 +80,10 @@ class _ChatItemState extends State<ChatItem> {
               onTap: () {
                 __onTapedUserPortrait();
               },
+              onLongPress: ()
+              {
+                print('xxxx');
+              },
               child: WidgetUtil.buildUserPortrait(this.user.portraitUrl),
             ),
           ],
@@ -92,8 +96,12 @@ class _ChatItemState extends State<ChatItem> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             GestureDetector(
-              onTap: () {
-                __onTapedUserPortrait();
+//              onTap: () {
+//                __onTapedUserPortrait();
+//              },
+              onLongPress: ()
+              {
+                print('xxxx');
               },
               child: WidgetUtil.buildUserPortrait(this.user.portraitUrl),
             ),

@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../im_flutter_sdk.dart';
 import 'em_message_body.dart';
+import 'dart:convert';
 
 /// 初始化SDK上下文的选项
 class EMOptions {
@@ -497,6 +498,7 @@ class EMMessage {
     return _attributes[attr];
   }
 
+
   /// TODO: setMessageStatusCallback (EMCallBack callback)
 
   /// ext
@@ -507,6 +509,9 @@ class EMMessage {
   static String currentTimeMillis() {
     return new DateTime.now().millisecondsSinceEpoch.toString();
   }
+
+
+  
 
   /// @nodoc
   Map toDataMap() {
@@ -534,7 +539,7 @@ class EMMessage {
 
   /// @nodoc
   EMMessage.from(Map data)
-      : _attributes = data['attributes'],
+      :_attributes = convertAttributesToMap(data),
         localTime = data['localTime'],
         chatType = fromChatType(data['chatType']),
         msgId = data['msgId'],
@@ -551,6 +556,7 @@ class EMMessage {
         acked = data['acked'],
         type = fromType(data['type']),
         unread = data['unread'];
+  
 
   /// @nodoc
   String toString() {
@@ -595,6 +601,36 @@ toType(EMMessageType type) {
   } else if (type == EMMessageType.CMD) {
     return 6;
   }
+}
+
+///cao,适配android的字符串！！！！！！
+Map convertAttributesToMap(Map data)
+{
+  Map att = {};
+  if(data.containsKey('attributes'))
+  {
+    Map ext = data['attributes'];
+    if(ext.isNotEmpty)
+    {
+      Utf8Decoder utf8decoder = Utf8Decoder();
+      ext.forEach((key, value) {
+        if (value is String) {
+          String valueString = value;
+          try {
+            att[key] = json.decode(value);
+          }
+          catch (e) {
+            att[key] = value;
+          }
+        }
+        else
+        {
+          att[key] = value;
+        }
+      });
+    }
+  }
+  return att;
 }
 
 /// @nodoc 聊天类型 int 类型数据转 ChatType
@@ -1061,10 +1097,13 @@ class EMPushConfigs {
   bool _noDisturbOn;
   int _noDisturbStartHour;
   int _noDisturbEndHour;
+  num _displayStyle;
 
   String getDisplayNickname() {
     return _displayNickname;
   }
+
+  int get displayStyle => _displayStyle.toInt();
 
   bool isNoDisturbOn() {
     return _noDisturbOn;
@@ -1082,5 +1121,6 @@ class EMPushConfigs {
       : _displayNickname = data['nickName'],
         _noDisturbOn = data['noDisturbOn'],
         _noDisturbStartHour = data['startHour'],
+        _displayStyle = data.containsKey('displayStyle') ? data['displayStyle'] : 1,
         _noDisturbEndHour = data['endHour'];
 }

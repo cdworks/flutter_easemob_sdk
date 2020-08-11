@@ -51,6 +51,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (NSDictionary *)pageReslutToDictionary:(EMPageResult *)pageResult;
 
+#pragma mark - PushOptions
+
++ (NSDictionary *)pushOptionsToDictionary:(EMPushOptions *)options;
 
 
 @end

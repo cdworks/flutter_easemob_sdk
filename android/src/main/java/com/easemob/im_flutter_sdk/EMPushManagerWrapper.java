@@ -1,5 +1,6 @@
 package com.easemob.im_flutter_sdk;
 
+import android.app.Activity;
 import android.content.Context;
 
 import com.hyphenate.chat.EMClient;
@@ -23,6 +24,12 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import static com.easemob.im_flutter_sdk.EMHelper.convertEMPushConfigsToStringMap;
 
 public class EMPushManagerWrapper  implements MethodCallHandler, EMWrapper {
+
+    private Activity activity;
+
+    EMPushManagerWrapper(Activity activity) {
+        this.activity = activity;
+    }
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
@@ -49,10 +56,22 @@ public class EMPushManagerWrapper  implements MethodCallHandler, EMWrapper {
             public void run() {
                 try {
                     EMClient.getInstance().pushManager().enableOfflinePush();
-                    onSuccess(result);
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            onSuccess(result);
+                        }
+                    });
+
                 }catch (HyphenateException e){
                     EMLog.e("HyphenateException", e.getMessage());
-                    onError(result, e);
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            onError(result, e);
+                        }
+                    });
+
                 }
             }
         }).start();
@@ -68,10 +87,21 @@ public class EMPushManagerWrapper  implements MethodCallHandler, EMWrapper {
                     int endTime = argMap.getInt("endTime");
                     try {
                         EMClient.getInstance().pushManager().disableOfflinePush(startTime, endTime);
-                        onSuccess(result);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onSuccess(result);
+                            }
+                        });
                     } catch (HyphenateException e) {
                         EMLog.e("HyphenateException", e.getMessage());
-                        onError(result, e);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onError(result, e);
+                            }
+                        });
+
                     }
                 }catch (JSONException e){
                     EMLog.e("JSONException", e.getMessage());
@@ -97,10 +127,22 @@ public class EMPushManagerWrapper  implements MethodCallHandler, EMWrapper {
                     Map<String, Object> data = new HashMap<String, Object>();
                     data.put("success", Boolean.TRUE);
                     data.put("value", convertEMPushConfigsToStringMap(configs));
-                    result.success(data);
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            result.success(data);
+                        }
+                    });
+
                 }catch (HyphenateException e){
                     EMLog.e("HyphenateException", e.getMessage());
-                    onError(result, e);
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            onError(result, e);
+                        }
+                    });
+
                 }
             }
         }).start();
@@ -119,11 +161,30 @@ public class EMPushManagerWrapper  implements MethodCallHandler, EMWrapper {
                         groupIdList.add(groupIds.get(i).toString());
                     }
                     try {
+
+                        if (noPush) {
+                            EMClient.getInstance().pushManager().disableOfflinePush(0, 24);
+                        }else {
+                            EMClient.getInstance().pushManager().enableOfflinePush();
+                        }
+
                         EMClient.getInstance().pushManager().updatePushServiceForGroup(groupIdList, noPush);
-                        onSuccess(result);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onSuccess(result);
+                            }
+                        });
+
                     } catch (HyphenateException e) {
                         EMLog.e("HyphenateException", e.getMessage());
-                        onError(result, e);
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                onError(result, e);
+                            }
+                        });
+
                     }
                 }catch (JSONException e){
                     EMLog.e("JSONException", e.getMessage());
@@ -150,7 +211,12 @@ public class EMPushManagerWrapper  implements MethodCallHandler, EMWrapper {
                     Map<String, Object> data = new HashMap<String, Object>();
                     data.put("success", Boolean.TRUE);
                     data.put("value", updatenick);
-                    result.success(data);
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            result.success(data);
+                        }
+                    });
                 }catch (JSONException e){
                     EMLog.e("JSONException", e.getMessage());
                 }

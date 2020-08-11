@@ -145,8 +145,12 @@
         {
             NSString *localUrl = msgBodyDict[@"localUrl"];
             long long fileLength = [msgBodyDict[@"fileLength"] longLongValue];
-            NSString* fileName = [localUrl pathComponents].lastObject;
-            
+            NSString* fileName = [msgBodyDict valueForKeyPath:@"displayName"];
+            if(!fileName.length)
+            {
+                fileName =[localUrl pathComponents].lastObject;
+            }
+ 
             body = [[EMFileMessageBody alloc] initWithLocalPath:localUrl displayName:fileName];
             ((EMFileMessageBody *)body).fileLength = fileLength;
         }
@@ -320,6 +324,7 @@
     ret[@"id"] = aConversation.conversationId;
     ret[@"type"] = @([self conversationTypeToInt:aConversation.type]);
     ret[@"ext"] = aConversation.ext;
+    ret[@"unreadMessagesCount"] = @(aConversation.unreadMessagesCount);
     return ret;
 }
 
@@ -349,16 +354,13 @@
     EMGroupOptions *options = aGroup.setting;
     EMGroupStyle style = options.style;
     BOOL isMemberAllowToInvite;
-       BOOL isMemberOnly;
+       BOOL isMemberOnly = YES;
        if (style == EMGroupStylePrivateOnlyOwnerInvite) {
            isMemberAllowToInvite = NO;
-           isMemberOnly = NO;
        } else if (style == EMGroupStylePrivateMemberCanInvite) {
            isMemberAllowToInvite = YES;
-           isMemberOnly = NO;
        } else if (style == EMGroupStylePublicJoinNeedApproval) {
            isMemberAllowToInvite = NO;
-           isMemberOnly = YES;
        } else {
            isMemberAllowToInvite = NO;
            isMemberOnly = NO;
@@ -396,7 +398,7 @@
         groupDict[@"adminList"] = aGroup.adminList;
     }
     if (aGroup.memberList) {
-        groupDict[@"memberList"] = aGroup.memberList;
+        groupDict[@"members"] = aGroup.memberList;
     }
     if (aGroup.blacklist) {
         groupDict[@"blacklist"] = aGroup.blacklist;
@@ -464,6 +466,17 @@
     }
     return [NSArray arrayWithArray:sharedFileMutableArray];
 }
+
+#pragma mark - pushNotification
+
++ (NSDictionary *)pushOptionsToDictionary:(EMPushOptions *)options {
+    if(options)
+    {
+        return @{@"nickName":options.displayName ? options.displayName : @"",@"noDisturbOn":[NSNumber numberWithBool:options.noDisturbStatus!=EMPushNoDisturbStatusClose] ,@"startHour":@(options.noDisturbingStartH),@"endHour":@(options.noDisturbingEndH),@"displayStyle":@((int)options.displayStyle)};
+    }
+    return @{};
+}
+
 
 #pragma mark - ChatRoom
 

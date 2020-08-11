@@ -1,23 +1,20 @@
 package com.easemob.im_flutter_sdk;
 
+import android.util.Log;
 import com.hyphenate.EMCallBack;
 import com.hyphenate.EMMessageListener;
 import com.hyphenate.chat.*;
 import com.hyphenate.exceptions.HyphenateException;
 import com.hyphenate.util.EMLog;
 
-import java.util.ArrayList;
+import java.util.*;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
@@ -169,7 +166,11 @@ public class EMChatManagerWrapper implements MethodCallHandler, EMWrapper{
             loadAllConversations(call.arguments, result);
         }else if(EMSDKMethod.deleteConversation.equals(call.method)) {
             deleteConversation(call.arguments, result);
-        }else if(EMSDKMethod.setVoiceMessageListened.equals(call.method)) {
+        }
+        else if(EMSDKMethod.deleteConversationIfEmpty.equals(call.method)) {
+            deleteConversationIfEmpty(call.arguments, result);
+        }
+        else if(EMSDKMethod.setVoiceMessageListened.equals(call.method)) {
             setVoiceMessageListened(call.arguments, result);
         }else if(EMSDKMethod.updateParticipant.equals(call.method)) {
             updateParticipant(call.arguments, result);
@@ -598,13 +599,49 @@ public class EMChatManagerWrapper implements MethodCallHandler, EMWrapper{
     private void getAllConversations(Object args, Result result) {
         assert(args instanceof Map);
         Map<String, EMConversation> list = manager.getAllConversations();
+
+        ArrayList<EMConversation> conversationList =  new ArrayList<>(list.values());
+
+        Iterator<EMConversation> iterator = conversationList.iterator();
+
+        while (iterator.hasNext())
+        {
+            EMConversation emConversation = iterator.next();
+            if (emConversation.getLastMessage() == null)
+            {
+                EMClient.getInstance().chatManager().deleteConversation(emConversation.conversationId(),true);
+                iterator.remove();
+                Log.d("easeui","delete empty conversation !!");
+
+            }
+        }
+
+        if(!conversationList.isEmpty())
+        {
+            Collections.sort(conversationList, (t, t1) -> {
+
+                EMMessage message1 = t.getLastMessage();
+                EMMessage message2 = t1.getLastMessage();
+                if(message1.getMsgTime() > message2.getMsgTime()) {
+                    return -1;
+                }else if(message1.getMsgTime() < message2.getMsgTime())
+                {
+                    return 1;
+                }
+                return 0;
+            });
+        }
+
         List<Map<String, Object>> conversations = new LinkedList<Map<String, Object>>();
 //        list.forEach((String id, EMConversation conversation)->{
 //            conversations.add(EMHelper.convertEMConversationToStringMap(conversation));
 //        });
-        for(Map.Entry<String, EMConversation> m : list.entrySet()){
-            conversations.add(EMHelper.convertEMConversationToStringMap( m.getValue()));
+        for(EMConversation m : conversationList){
+            conversations.add(EMHelper.convertEMConversationToStringMap(m));
         }
+
+
+
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("success", Boolean.TRUE);
         data.put("conversations", conversations);
@@ -629,6 +666,30 @@ public class EMChatManagerWrapper implements MethodCallHandler, EMWrapper{
             EMLog.e("JSONException", e.getMessage());
         }
     }
+
+    private void deleteConversationIfEmpty(Object args, Result result) {
+        try {
+            JSONObject argMap = (JSONObject)args;
+            String userName = argMap.getString("userName");
+            Boolean deleteMessages = argMap.getBoolean("deleteMessages");
+
+            EMConversation conversation = manager.getConversation(userName);
+            boolean status = false;
+            if(conversation != null && conversation.getLastMessage() == null)
+            {
+                status = manager.deleteConversation(userName,deleteMessages.booleanValue());
+            }
+
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("success", Boolean.TRUE);
+            data.put("status", status);
+            result.success(data);
+        }catch (JSONException e){
+            EMLog.e("JSONException", e.getMessage());
+        }
+    }
+
+
 
 
     private void setVoiceMessageListened(Object args, Result result) {

@@ -1,7 +1,10 @@
 package com.easemob.im_flutter_sdk;
 
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+
+import androidx.annotation.RequiresApi;
 
 import com.hyphenate.EMCallBack;
 import com.hyphenate.EMValueCallBack;
@@ -47,7 +50,7 @@ public class ImFlutterSdkPlugin {
 
   public static void registerClientWith(Registrar registrar) {
     final MethodChannel channel = new MethodChannel(registrar.messenger(), CHANNEL_PREFIX + "/em_client", JSONMethodCodec.INSTANCE);
-    channel.setMethodCallHandler(new EMClientWrapper(registrar.context(), channel));
+    channel.setMethodCallHandler(new EMClientWrapper(registrar.context(),registrar.activity(), channel));
   }
 
   public static void registerChatManagerWith(Registrar registrar) {
@@ -72,12 +75,12 @@ public class ImFlutterSdkPlugin {
 
   public static void registerGroupManagerWith(Registrar registrar) {
     final MethodChannel channel = new MethodChannel(registrar.messenger(), CHANNEL_PREFIX + "/em_group_manager", JSONMethodCodec.INSTANCE);
-    channel.setMethodCallHandler(new EMGroupManagerWrapper(channel));
+    channel.setMethodCallHandler(new EMGroupManagerWrapper(channel,registrar.activity()));
   }
 
   public static void registerPushManagerWith(Registrar registrar) {
     final MethodChannel channel = new MethodChannel(registrar.messenger(), CHANNEL_PREFIX + "/em_push_manager", JSONMethodCodec.INSTANCE);
-    channel.setMethodCallHandler(new EMPushManagerWrapper());
+    channel.setMethodCallHandler(new EMPushManagerWrapper(registrar.activity()));
   }
 
   public static void registerVoiceRecorderManagerWith(Registrar registrar) {
@@ -91,6 +94,7 @@ public class ImFlutterSdkPlugin {
 interface EMWrapper {
   default void post(Consumer<Void> func) {
     ImFlutterSdkPlugin.handler.post(new Runnable() {
+      @RequiresApi(api = Build.VERSION_CODES.N)
       @Override
       public void run() {
         func.accept(null);
@@ -125,6 +129,7 @@ class EMWrapperCallBack implements EMCallBack{
 
   void post(Consumer<Void> func) {
     ImFlutterSdkPlugin.handler.post(new Runnable() {
+      @RequiresApi(api = Build.VERSION_CODES.N)
       @Override
       public void run() {
         func.accept(null);
@@ -173,6 +178,7 @@ class EMValueWrapperCallBack<T> implements EMValueCallBack<T> {
 
   void post(Consumer<Void> func) {
     ImFlutterSdkPlugin.handler.post(new Runnable() {
+      @RequiresApi(api = Build.VERSION_CODES.N)
       @Override
       public void run() {
         func.accept(null);
@@ -180,6 +186,7 @@ class EMValueWrapperCallBack<T> implements EMValueCallBack<T> {
     });
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.N)
   @Override
   public void onSuccess(Object value) {
     post((Void)->{

@@ -29,6 +29,14 @@ class EMChatManager {
   factory EMChatManager.getInstance() {
     return _instance = _instance ?? EMChatManager._internal();
   }
+  
+  
+  ///初始化
+  void initManager()
+  {
+    _emChatManagerChannel.invokeMethod(
+        EMSDKMethod.initManager);
+  }
 
   /// 发送消息 [message].
   void sendMessage(EMMessage message,
@@ -43,17 +51,19 @@ class EMChatManager {
          var respnseMsg = response['message'];
 //         message.msgId = EMMessage.from(response['message']).msgId;
 //         message.status = EMMessage.from(response['message']).status;
-         message.status = fromEMMessageStatus(respnseMsg['status']);
-        message.msgId = respnseMsg['msgId'];
-         message.unread = respnseMsg['unread'];
-         message.acked = respnseMsg['acked'];
-         message.deliverAcked = respnseMsg['deliverAcked'];
-         message.localTime = respnseMsg['localTime'];
-         message.from = respnseMsg['from'];
-        message.to = respnseMsg['to'];
-        message.msgTime = respnseMsg['msgTime'];
-        if(message.type != EMMessageType.TXT) {
-          message.body = EMMessageBody.from(respnseMsg['body']);
+        if(message.type != EMMessageType.CMD) {
+          message.status = fromEMMessageStatus(respnseMsg['status']);
+          message.msgId = respnseMsg['msgId'];
+          message.unread = respnseMsg['unread'];
+          message.acked = respnseMsg['acked'];
+          message.deliverAcked = respnseMsg['deliverAcked'];
+          message.localTime = respnseMsg['localTime'];
+          message.from = respnseMsg['from'];
+          message.to = respnseMsg['to'];
+          message.msgTime = respnseMsg['msgTime'];
+          if (message.type != EMMessageType.TXT) {
+            message.body = EMMessageBody.from(respnseMsg['body']);
+          }
         }
         if (onSuccess != null) onSuccess();
       }
@@ -258,7 +268,7 @@ class EMChatManager {
       }
       return list;
     } else {
-      return null;
+      return [];
     }
   }
 
@@ -296,7 +306,7 @@ class EMChatManager {
       }
       return data;
     } else {
-      return null;
+      return [];
     }
   }
 
@@ -319,6 +329,23 @@ class EMChatManager {
       return false;
     }
   }
+
+  /// 若会话无消息，则删除与[userName] 的对话, 如果[deleteCoversations]设置为true，则还会删除消息。
+  Future<bool> deleteConversationIfEmpty(
+      String userName,
+      bool deleteMessages
+      ) async {
+    Map<String, dynamic> result = await _emChatManagerChannel.invokeMethod(
+        EMSDKMethod.deleteConversationIfEmpty,
+        {"userName": userName, "deleteMessages": deleteMessages});
+    if (result['success']) {
+      return result['status'];
+    } else {
+      return false;
+    }
+  }
+  
+  
 
   /// 添加消息监听 [listener]
   void addMessageListener(EMMessageListener listener) {
@@ -407,7 +434,7 @@ class EMChatManager {
       }
       return data;
     } else {
-      return null;
+      return [];
     }
   }
 
@@ -517,7 +544,7 @@ class _EMCursorResults<T> extends EMCursorResults<T> {
       }
       return list as T;
     } else {
-      return null;
+      return [] as T;
     }
   }
 }

@@ -36,6 +36,7 @@ public class EMSDKMethod {
     static final String onContactChanged = "onContactChanged";
 
     /// EMChatManager methods
+    static final String initManager = "initManager";
     static final String sendMessage = "sendMessage";
     static final String resendMessage = "resendMessage";
     static final String ackMessageRead = "ackMessageRead";
@@ -54,6 +55,7 @@ public class EMSDKMethod {
     static final String getAllConversations = "getAllConversations";
     static final String loadAllConversations = "loadAllConversations";
     static final String deleteConversation = "deleteConversation";
+    static final String deleteConversationIfEmpty = "deleteConversationIfEmpty";
     static final String setVoiceMessageListened = "setVoiceMessageListened";
     static final String updateParticipant = "updateParticipant";
     static final String fetchHistoryMessages = "fetchHistoryMessages";

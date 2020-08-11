@@ -2,7 +2,7 @@
 
 import 'package:flutter/services.dart';
 import 'package:im_flutter_sdk/src/em_domain_terms.dart';
-
+import 'dart:io';
 import 'em_sdk_method.dart';
 
 class EMPushManager{
@@ -47,19 +47,15 @@ class EMPushManager{
   }
 
   /// 从缓存获取推送配置信息
-  void getPushConfigs({onSuccess(EMPushConfigs pushConfigs),onError(int errorCode, String desc)}){
-    Future<Map<String, dynamic>> result = _emPushManagerChannel
+  Future <EMPushConfigs> getPushConfigs() async{
+    Map<String, dynamic> result = await _emPushManagerChannel
         .invokeMethod(EMSDKMethod.getPushConfigs);
-    result.then((response){
-      if(response['success']){
-        if(onSuccess != null){
-          Map<String, dynamic> value = response['value'];
-          onSuccess(EMPushConfigs.from(value));
-        }
-      }else{
-        if (onError != null) onError(response['code'], response['desc']);
-      }
-    });
+
+    if(result['success']){
+      Map<String, dynamic> value = result['value'];
+      return EMPushConfigs.from(value);
+    }
+    return null;
   }
 
   /// 从服务器获取推送配置信息
@@ -97,23 +93,20 @@ class EMPushManager{
   }
 
   /// 获取关闭了离线消息推送的群组
-  void getNoPushGroups({onSuccess(List<String> groupIds), onError(int errorCode, String desc)}){
-    Future<Map<String, dynamic>> result = _emPushManagerChannel
+  Future<List<String>> getNoPushGroups() async{
+    Map<String, dynamic> result = await _emPushManagerChannel
         .invokeMethod(EMSDKMethod.getNoPushGroups);
-    result.then((response){
-      if(response['success']){
-        if(onSuccess != null){
-          List<String> groupIds = [];
-          if(response['value'] != null){
-            var list = response['value'] as List<dynamic>;
-            list.forEach((item) => groupIds.add(item));
-          }
-          onSuccess(groupIds);
-        }
-      }else{
-        if (onError != null) onError(response['code'], response['desc']);
+
+    if(result['success']) {
+      List<String> groupIds = [];
+      if (result['value'] != null) {
+        List s = result['value'] as List<dynamic>;
+        s.forEach((element) => groupIds.add(element));
+        return groupIds;
       }
-    });
+    }
+
+    return [];
   }
 
   /// 更新当前用户的nickname,这样离线消息推送的时候可以显示用户昵称而不是id
@@ -123,6 +116,20 @@ class EMPushManager{
     if(result['success']){
         return result['value'];
     }
+    return false;
+  }
+
+  Future<bool> updatePushDisplayStyle(int displayStyle) async
+  {
+    if(Platform.isIOS)
+      {
+        Map<String, dynamic> result = await _emPushManagerChannel
+            .invokeMethod(EMSDKMethod.updatePushDisplayStyle, displayStyle);
+        if(result['success']){
+          return result['value'];
+        }
+      }
+
     return false;
   }
 }

@@ -416,6 +416,9 @@ class _ChatPageState extends State<ChatPage> implements EMMessageListener,ChatIt
   @override
   void onTapUserPortrait(String userId) {
     print("点击了用户头像 "+userId);
+
+
+
   }
 
   @override

@@ -15,7 +15,7 @@
 #import "EMVoiceRecorderWrapper.h"
 #import "EMHelper.h"
 #import "EMAudioPlayerUtil.h"
-
+#import "EMPushManagerWrapper.h"
 
 @interface EMClientWrapper () <EMClientDelegate, EMMultiDevicesDelegate>
 @property (nonatomic, strong) NSMutableDictionary *deviceDict;
@@ -41,6 +41,18 @@
 -(void)applicationWillResignActive:(UIApplication *)application
 {
     [EMAudioPlayerUtil stopCurrentPlaying];
+}
+
+-(void)applicationDidEnterBackground:(UIApplication *)application
+{
+    [[EMClient sharedClient] applicationDidEnterBackground:application];
+}
+
+-(void)applicationWillEnterForeground:(UIApplication *)application
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        [[EMClient sharedClient] applicationWillEnterForeground:application];
+    });
 }
 
 #pragma mark - FlutterPlugin
@@ -109,6 +121,9 @@
     EMChatroomManagerWrapper * chatroomManagerWrapper =[[EMChatroomManagerWrapper alloc] initWithChannelName:EMChannelName(@"em_chat_room_manager")
                                                                                                    registrar:self.flutterPluginRegister];
     EMVoiceRecorderWrapper * voiceRecorderManagerWrapper =[[EMVoiceRecorderWrapper alloc] initWithChannelName:EMChannelName(@"em_voice_recorder")
+    registrar:self.flutterPluginRegister];
+    
+    EMPushManagerWrapper * pushManagerWrapper =[[EMPushManagerWrapper alloc] initWithChannelName:EMChannelName(@"em_push_manager")
     registrar:self.flutterPluginRegister];
     
 #pragma clang diagnostic pop
@@ -187,9 +202,19 @@
 
 - (void)getCurrentUser:(NSDictionary *)param result:(FlutterResult)result {
     NSString *username = EMClient.sharedClient.currentUsername;
-    [self wrapperCallBack:result
-                    error:nil
-                 userInfo:@{@"userName":username}];
+    if(username)
+    {
+        [self wrapperCallBack:result
+           error:nil
+        userInfo:@{@"userName":username}];
+    }
+    else
+    {
+        [self wrapperCallBack:result
+           error:[EMError errorWithDescription:@"not login!" code:EMErrorGeneral]
+        userInfo:nil];
+    }
+    
 }
 
 - (void)updateCurrentUserNick:(NSDictionary *)param result:(FlutterResult)result {

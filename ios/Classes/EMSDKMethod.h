@@ -50,7 +50,7 @@ static NSString * const EMMethodKeyGetSelfIdsOnOtherPlatform = @"getSelfIdsOnOth
 static NSString * const EMMethodKeyOnContactChanged = @"onContactChanged";
 
 #pragma mark - EMChatManagerWrapper
-
+static NSString * const EMMethodKeyInitManager = @"initManager";
 static NSString * const EMMethodKeySendMessage = @"sendMessage";
 static NSString * const EMMethodKeyResendMessage = @"resendMessage";
 static NSString * const EMMethodKeyAckMessageRead = @"ackMessageRead";
@@ -69,6 +69,7 @@ static NSString * const EMMethodKeyDownloadFile = @"downloadFile";
 static NSString * const EMMethodKeyGetAllConversations = @"getAllConversations";
 static NSString * const EMMethodKeyLoadAllConversations = @"loadAllConversations";
 static NSString * const EMMethodKeyDeleteConversation = @"deleteConversation";
+static NSString * const EMMethodKeyDeleteConversationIfEmpty = @"deleteConversationIfEmpty";
 static NSString * const EMMethodKeySetVoiceMessageListened = @"setVoiceMessageListened";
 static NSString * const EMMethodKeyUpdateParticipant = @"updateParticipant";
 static NSString * const EMMethodKeyFetchHistoryMessages = @"fetchHistoryMessages";
@@ -135,8 +136,8 @@ static NSString * const EMMethodKeyChatroomChanged = @"onChatroomChanged";
 #pragma mark - EMGroupManagerWrapper
 
 static NSString * const EMMethodKeyGetJoinedGroups = @"getAllGroups";
-// 有疑议
-static NSString * const EMMethodKeyGetGroupsWithoutPushNotification = @"getGroupsWithoutPushNotification";
+//// 有疑议
+//static NSString * const EMMethodKeyGetGroupsWithoutPushNotification = @"getGroupsWithoutPushNotification";
 static NSString * const EMMethodKeyGetGroup = @"getGroup";
 // 有疑议
 static NSString * const EMMethodKeyLoadAllGroups = @"loadAllGroups";
@@ -176,10 +177,19 @@ static NSString * const EMMethodKeyApproveJoinGroupRequest = @"acceptApplication
 static NSString * const EMMethodKeyDeclineJoinGroupRequest = @"declineApplication";
 static NSString * const EMMethodKeyAcceptInvitationFromGroup = @"acceptGroupInvitation";
 static NSString * const EMMethodKeyDeclineGroupInvitation = @"declineGroupInvitation";
-// 有疑议
+
+
+
 static NSString * const EMMethodKeyUpdatePushServiceForGroup = @"updatePushServiceForGroup";
-// 有疑议
-static NSString * const EMMethodKeyUpdatePushServiceForGroups = @"updatePushServiceForGroups";
+static NSString * const EMMethodKeyGetNoPushGroups = @"getNoPushGroups";
+static NSString * const EMMethodKeyUpdatePushNickname = @"updatePushNickname";
+static NSString * const EMMethodKeyGetPushConfigsFromServer = @"getPushConfigsFromServer";
+static NSString * const EMMethodKeyEnableOfflinePush = @"enableOfflinePush";
+static NSString * const EMMethodKeyDisableOfflinePush = @"disableOfflinePush";
+static NSString * const EMMethodKeyGetPushConfigs = @"getPushConfigs";
+
+static NSString * const EMMethodKeyUpdatePushDisplayStyle = @"updatePushDisplayStyle";
+
 
 static NSString * const EMMethodKeyOnGroupChanged = @"onGroupChanged";
 

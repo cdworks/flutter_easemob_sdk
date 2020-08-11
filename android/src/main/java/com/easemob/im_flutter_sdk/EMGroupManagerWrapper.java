@@ -1,6 +1,8 @@
 package com.easemob.im_flutter_sdk;
 
 
+import android.app.Activity;
+
 import com.hyphenate.EMGroupChangeListener;
 import com.hyphenate.chat.EMClient;
 import com.hyphenate.chat.EMCursorResult;
@@ -32,8 +34,11 @@ public class EMGroupManagerWrapper implements MethodCallHandler, EMWrapper {
     // method channel for event broadcast back to flutter
     private MethodChannel channel;
 
-    EMGroupManagerWrapper(MethodChannel channel) {
+    private Activity activity;
+
+    EMGroupManagerWrapper(MethodChannel channel,Activity activity) {
         this.channel = channel;
+        this.activity = activity;
     }
 
     public void init(){
@@ -398,6 +403,7 @@ public class EMGroupManagerWrapper implements MethodCallHandler, EMWrapper {
         data.put("value", list);
         result.success(data);
     }
+
 
     private void createGroup(Object args, MethodChannel.Result result){
         try {
@@ -857,7 +863,13 @@ public class EMGroupManagerWrapper implements MethodCallHandler, EMWrapper {
                     Map<String, Object> data = new HashMap<String, Object>();
                     data.put("success", Boolean.TRUE);
                     data.put("value", EMHelper.convertEMGroupToStringMap(group));
-                    result.success(data);
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            result.success(data);
+                        }
+                    });
+
                 }catch (Exception e){
                     e.printStackTrace();
                 }
